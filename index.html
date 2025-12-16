@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPA Calculator — Free GPA Calculator Tool | Usman-Khan</title>
+  <meta name="description" content="Use our free GPA Calculator to compute your semester or cumulative GPA using your grades and credit hours. Easy, fast, and mobile-friendly.">
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script> <!-- Example for icons -->
+</head>
+<body>
+
+  <header class="sticky-header">
+    <div class="container">
+        <nav class="main-nav">
+            <a href="#" class="logo">UsmanKhan</a>
+            <ul class="nav-links">
+                <li><a href="#" class="active">GPA Calculator</a></li>
+                <li><a href="#">Calculators</a></li>
+                <li><a href="#">Contact</a></li>
+            </ul>
+        </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero-section">
+      <div class="breadcrumb">
+        <a href="#">Home</a> / <span>GPA Calculator</span>
+      </div>
+      <h1>GPA Calculator</h1>
+      <p class="description">
+        Quickly calculate your cumulative GPA based on your course grades, credit hours, and grading scale. This GPA calculator supports letter and numeric grade inputs.
+      </p>
+    </section>
+
+    <section class="calculator-section card">
+      <div id="course-list">
+        <!-- Course rows will be added here by JavaScript -->
+      </div>
+      <div class="calculator-actions">
+        <button id="add-course" class="btn-secondary"><i class="fas fa-plus"></i> Add Course</button>
+        <button id="calculate-gpa" class="btn" disabled>Calculate GPA</button>
+      </div>
+    </section>
+
+    <section id="results" class="results-section card" style="display: none;" aria-live="polite">
+      <h2>Your Results</h2>
+      <p>Your GPA: <strong id="gpa-result">0.00</strong></p>
+      <p>Total Credits: <strong id="total-credits">0</strong></p>
+    </section>
+
+    <div class="info-grid">
+        <section class="informational-content">
+            <div class="info-section">
+              <h2>How Does This Work?</h2>
+              <p>Your Grade Point Average (GPA) is calculated by dividing the total number of grade points you've earned by the total number of credit hours you've attempted. This calculator makes it easy by following these simple steps:</p>
+              <ol>
+                  <li><strong>Add Your Courses:</strong> For each course, enter the course name (optional), your grade, and the number of credit hours.</li>
+                  <li><strong>Calculate:</strong> The calculator converts your letter grades into grade points (e.g., A = 4.0, B = 3.0).</li>
+                  <li><strong>Totaling:</strong> It then multiplies the grade points for each course by its credit hours to get the total quality points.</li>
+                  <li><strong>Final Calculation:</strong> The final GPA is the sum of all quality points divided by the total credit hours. The formula is:
+                    <br><strong>(Sum of (Grade Points × Credits)) / Total Credits</strong>
+                  </li>
+              </ol>
+            </div>
+
+            <div class="info-section">
+              <h2>Grading Scale Table</h2>
+              <table id="grading-scale-table">
+                <!-- Grading scale will be populated by JavaScript -->
+              </table>
+            </div>
+        </section>
+
+        <aside class="sidebar-content">
+            <div class="info-section">
+                <h2>Example Calculation</h2>
+                <p>Let's say you took three courses in a semester:</p>
+                <ul>
+                    <li><strong>Calculus II:</strong> Grade A- (3.7 points), 4 Credits</li>
+                    <li><strong>Physics I:</strong> Grade B+ (3.3 points), 3 Credits</li>
+                    <li><strong>Intro to Programming:</strong> Grade A (4.0 points), 3 Credits</li>
+                </ul>
+                <p>
+                    <strong>Quality Points:</strong><br>
+                    (3.7 × 4) + (3.3 × 3) + (4.0 × 3) = 14.8 + 9.9 + 12 = 36.7
+                </p>
+                 <p>
+                    <strong>Total Credits:</strong><br>
+                    4 + 3 + 3 = 10
+                </p>
+                <p>
+                    <strong>GPA:</strong> 36.7 / 10 = <strong>3.67</strong>
+                </p>
+            </div>
+             <div class="info-section">
+                <h2>Tips for Improving GPA</h2>
+                <ul>
+                    <li><strong>Time Management:</strong> Create a study schedule and stick to it.</li>
+                    <li><strong>Attend Office Hours:</strong> Don't be afraid to ask for help from your professors.</li>
+                    <li><strong>Study Groups:</strong> Collaborating with peers can improve understanding.</li>
+                    <li><strong>Prioritize Your Health:</strong> Ensure you get enough sleep and maintain a healthy diet.</li>
+                    <li><strong>Retake Courses:</strong> If your university allows it, retaking a course for a better grade can significantly boost your GPA.</li>
+                </ul>
+            </div>
+        </aside>
+    </div>
+
+    <section class="related-tools card">
+      <h2>Related Calculators</h2>
+      <div class="related-tools-grid">
+        <div class="tool-card">
+          <h3>Weighted GPA Calculator</h3>
+          <p>Calculate your weighted GPA.</p>
+          <a href="#">Go to calculator &rarr;</a>
+        </div>
+        <div class="tool-card">
+          <h3>College GPA Calculator</h3>
+          <p>Calculate your college GPA.</p>
+          <a href="#">Go to calculator &rarr;</a>
+        </div>
+        <div class="tool-card">
+          <h3>CGPA to GPA Converter</h3>
+          <p>Convert CGPA to GPA.</p>
+          <a href="#">Go to calculator &rarr;</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <h3>UsmanKhan</h3>
+          <p>A passionate developer creating tools for students.</p>
+        </div>
+        <div class="footer-links">
+          <h4>Quick Links</h4>
+          <ul>
+            <li><a href="#">About</a></li>
+            <li><a href="#">Privacy Policy</a></li>
+            <li><a href="#">Terms of Service</a></li>
+            <li><a href="#">Contact Us</a></li>
+          </ul>
+        </div>
+        <div class="footer-social">
+          <h4>Follow Me</h4>
+          <div class="social-icons">
+            <a href="https://github.com/usman-khan-0" aria-label="GitHub"><i class="fab fa-github"></i></a>
+            <a href="https://www.linkedin.com/in/usman-khan-59b2892b4/" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-legal">
+        <p>&copy; 2025 UsmanKhan. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
+</body>
+</html>
