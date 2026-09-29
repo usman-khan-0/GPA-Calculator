@@ -1,376 +1,461 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // Grading scales
-    const gradingScales = {
-        standard: {
-            'A+': 4.3, 'A': 4.0, 'A-': 3.7,
-            'B+': 3.3, 'B': 3.0, 'B-': 2.7,
-            'C+': 2.3, 'C': 2.0, 'C-': 1.7,
-            'D+': 1.3, 'D': 1.0, 'D-': 0.7,
-            'F': 0.0,
-        },
-        weighted: {
-            'A+': 5.3, 'A': 5.0, 'A-': 4.7,
-            'B+': 4.3, 'B': 4.0, 'B-': 3.7,
-            'C+': 3.3, 'C': 3.0, 'C-': 2.7,
-            'D+': 2.3, 'D': 2.0, 'D-': 1.7,
-            'F': 0.0,
-        },
-        custom: {
-            'A+': 4.3, 'A': 4.0, 'A-': 3.7,
-            'B+': 3.3, 'B': 3.0, 'B-': 2.7,
-            'C+': 2.3, 'C': 2.0, 'C-': 1.7,
-            'D+': 1.3, 'D': 1.0, 'D-': 0.7,
-            'F': 0.0,
-        }
+(() => {
+  'use strict';
+
+  const STORAGE_KEY = 'gpawise-state-v1';
+  const THEME_KEY = 'gpawise-theme';
+
+  const scales = {
+    standard: {
+      max: 4,
+      points: {
+        'A+': 4.0,
+        'A': 4.0,
+        'A-': 3.7,
+        'B+': 3.3,
+        'B': 3.0,
+        'B-': 2.7,
+        'C+': 2.3,
+        'C': 2.0,
+        'C-': 1.7,
+        'D+': 1.3,
+        'D': 1.0,
+        'D-': 0.7,
+        'F': 0.0
+      }
+    },
+    weighted: {
+      max: 5,
+      points: {
+        'A+': 5.0,
+        'A': 5.0,
+        'A-': 4.7,
+        'B+': 4.3,
+        'B': 4.0,
+        'B-': 3.7,
+        'C+': 3.3,
+        'C': 3.0,
+        'C-': 2.7,
+        'D+': 2.3,
+        'D': 2.0,
+        'D-': 1.7,
+        'F': 0.0
+      }
+    }
+  };
+
+  const gradeMeaning = {
+    'A+': 'Exceptional',
+    'A': 'Excellent',
+    'A-': 'Very good',
+    'B+': 'Good',
+    'B': 'Above average',
+    'B-': 'Average',
+    'C+': 'Fair',
+    'C': 'Satisfactory',
+    'C-': 'Needs work',
+    'D+': 'Below average',
+    'D': 'Poor',
+    'D-': 'Very poor',
+    'F': 'Not passing'
+  };
+
+  const sampleCourses = [
+    { name: 'Calculus II', grade: 'A-', credits: '4' },
+    { name: 'Physics I', grade: 'B+', credits: '3' },
+    { name: 'Intro to Programming', grade: 'A', credits: '3' }
+  ];
+
+  const elements = {
+    html: document.documentElement,
+    courseList: document.getElementById('course-list'),
+    emptyState: document.getElementById('empty-state'),
+    addCourse: document.getElementById('add-course'),
+    emptyAddCourse: document.getElementById('empty-add-course'),
+    clearAll: document.getElementById('clear-all'),
+    calculate: document.getElementById('calculate-gpa'),
+    download: document.getElementById('download-report'),
+    gradingScale: document.getElementById('grading-scale'),
+    gradingTable: document.getElementById('grading-scale-table'),
+    term: document.getElementById('term-select'),
+    gpaResult: document.getElementById('gpa-result'),
+    gpaMax: document.getElementById('gpa-max'),
+    ringValue: document.getElementById('ring-value'),
+    gpaRing: document.getElementById('gpa-ring'),
+    progressValue: document.getElementById('progress-value'),
+    progressBar: document.getElementById('progress-bar'),
+    totalCredits: document.getElementById('total-credits'),
+    qualityPoints: document.getElementById('quality-points'),
+    calculatedCourses: document.getElementById('calculated-courses'),
+    countLabel: document.getElementById('course-count-label'),
+    resultStatus: document.getElementById('result-status'),
+    resultCaption: document.getElementById('result-caption'),
+    resultCard: document.querySelector('.result-card'),
+    saveStatus: document.getElementById('save-status'),
+    saveStatusText: document.getElementById('save-status-text'),
+    toast: document.getElementById('toast'),
+    themeToggle: document.getElementById('theme-toggle'),
+    themeIcon: document.querySelector('#theme-toggle use'),
+    themeLabel: document.querySelector('.theme-label'),
+    menuToggle: document.getElementById('menu-toggle'),
+    primaryNav: document.getElementById('primary-nav')
+  };
+
+  let state = {
+    scale: 'standard',
+    term: 'Fall 2026',
+    courses: sampleCourses.map((course) => ({ ...course }))
+  };
+  let saveTimer;
+  let toastTimer;
+
+  function safeParse(value) {
+    try {
+      return JSON.parse(value);
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function normalizeCourse(course) {
+    const grade = course && typeof course.grade === 'string' && scales.standard.points[course.grade]
+      !== undefined ? course.grade : 'A';
+    const credits = course && course.credits !== undefined ? String(course.credits) : '3';
+    return {
+      name: course && typeof course.name === 'string' ? course.name : '',
+      grade,
+      credits: /^\d*\.?\d*$/.test(credits) ? credits : '3'
     };
+  }
 
-    let currentScale = 'standard';
-    let courseCount = 0;
-    let courses = [];
-
-    // DOM Elements
-    const courseList = document.getElementById('course-list');
-    const addCourseBtn = document.getElementById('add-course');
-    const calculateGpaBtn = document.getElementById('calculate-gpa');
-    const clearAllBtn = document.getElementById('clear-all');
-    const resultsSection = document.getElementById('results');
-    const downloadPdfBtn = document.getElementById('download-pdf');
-    const gradingScaleSelect = document.getElementById('grading-scale');
-    const liveGpaEl = document.getElementById('live-gpa');
-    const gpaResultEl = document.getElementById('gpa-result');
-    const totalCreditsEl = document.getElementById('total-credits');
-    const qualityPointsEl = document.getElementById('quality-points');
-    const courseCountEl = document.getElementById('course-count');
-    const breakdownList = document.getElementById('breakdown-list');
-    const gradingScaleTable = document.getElementById('grading-scale-table');
-    const menuToggle = document.getElementById('menuToggle');
-    const navLinks = document.querySelector('.nav-links');
-
-    // Initialize
-    function init() {
-        populateGradingScale();
-        addCourse();
-        setupEventListeners();
-        updateLiveGPA();
+  function loadState() {
+    const saved = safeParse(localStorage.getItem(STORAGE_KEY));
+    if (saved && Array.isArray(saved.courses)) {
+      state = {
+        scale: scales[saved.scale] ? saved.scale : 'standard',
+        term: typeof saved.term === 'string' ? saved.term : 'Fall 2026',
+        courses: saved.courses.map(normalizeCourse)
+      };
     }
 
-    function populateGradingScale() {
-        const scale = gradingScales[currentScale];
-        let tableHtml = '<thead><tr><th>Grade</th><th>Points</th><th>Description</th></tr></thead><tbody>';
-        
-        for (const [grade, points] of Object.entries(scale)) {
-            let description = '';
-            if (grade === 'A+') description = 'Excellent';
-            else if (grade === 'A') description = 'Outstanding';
-            else if (grade === 'A-') description = 'Very Good';
-            else if (grade === 'B+') description = 'Good';
-            else if (grade === 'B') description = 'Above Average';
-            else if (grade === 'B-') description = 'Average';
-            else if (grade === 'C+') description = 'Below Average';
-            else if (grade === 'C') description = 'Satisfactory';
-            else if (grade === 'D+') description = 'Poor';
-            else if (grade === 'D') description = 'Very Poor';
-            else if (grade === 'F') description = 'Fail';
-            
-            tableHtml += `
-                <tr>
-                    <td><span class="grade-badge">${grade}</span></td>
-                    <td><strong>${points.toFixed(1)}</strong></td>
-                    <td>${description}</td>
-                </tr>
-            `;
-        }
-        
-        tableHtml += '</tbody>';
-        gradingScaleTable.innerHTML = tableHtml;
+    if (elements.gradingScale) elements.gradingScale.value = state.scale;
+    if (elements.term) elements.term.value = state.term;
+  }
+
+  function persistState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      elements.saveStatus.classList.remove('saving');
+      elements.saveStatusText.textContent = 'Saved locally';
+    } catch (_error) {
+      elements.saveStatusText.textContent = 'Saved for this session';
     }
+  }
 
-    function addCourse(name = '', grade = 'A', credits = '3') {
-        courseCount++;
-        const courseId = `course-${courseCount}`;
-        
-        const courseRow = document.createElement('div');
-        courseRow.className = 'course-row';
-        courseRow.id = courseId;
-        
-        courseRow.innerHTML = `
-            <div class="input-cell">
-                <input type="text" 
-                       placeholder="Course Name (e.g., Calculus)" 
-                       class="course-name" 
-                       value="${name}"
-                       oninput="updateLiveGPA()">
-            </div>
-            <div class="input-cell">
-                <select class="grade" onchange="updateLiveGPA()">
-                    ${Object.keys(gradingScales[currentScale]).map(g => 
-                        `<option value="${g}" ${g === grade ? 'selected' : ''}>${g}</option>`
-                    ).join('')}
-                </select>
-            </div>
-            <div class="input-cell">
-                <input type="number" 
-                       placeholder="Credits" 
-                       class="credits" 
-                       min="0" 
-                       step="0.5" 
-                       value="${credits}"
-                       oninput="updateLiveGPA()">
-            </div>
-            <div class="input-cell">
-                <button class="remove-course" onclick="removeCourse('${courseId}')">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        `;
-        
-        courseList.appendChild(courseRow);
-        updateCalculateBtnState();
-        saveCoursesToStorage();
+  function scheduleSave() {
+    clearTimeout(saveTimer);
+    elements.saveStatus.classList.add('saving');
+    elements.saveStatusText.textContent = 'Saving…';
+    saveTimer = setTimeout(persistState, 280);
+  }
+
+  function escapeAttribute(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function formatNumber(value, decimals = 1) {
+    return Number(value.toFixed(decimals)).toString();
+  }
+
+  function getCurrentScale() {
+    return scales[state.scale] || scales.standard;
+  }
+
+  function gradeOptions(selectedGrade) {
+    return Object.keys(getCurrentScale().points).map((grade) => (
+      `<option value="${grade}" ${grade === selectedGrade ? 'selected' : ''}>${grade}</option>`
+    )).join('');
+  }
+
+  function renderCourses(focusIndex = -1) {
+    elements.courseList.innerHTML = state.courses.map((course, index) => {
+      const points = getCurrentScale().points[course.grade];
+      return `
+        <div class="course-grid course-row" data-index="${index}">
+          <div class="course-name-cell">
+            <label class="sr-only" for="course-name-${index}">Course ${index + 1} name</label>
+            <input class="field-control course-name" id="course-name-${index}" type="text" maxlength="80" placeholder="e.g. Biology 101" value="${escapeAttribute(course.name)}" autocomplete="off">
+          </div>
+          <div class="grade-cell">
+            <label class="sr-only" for="course-grade-${index}">Course ${index + 1} grade</label>
+            <select class="field-control course-grade" id="course-grade-${index}">${gradeOptions(course.grade)}</select>
+          </div>
+          <div class="credits-cell">
+            <label class="sr-only" for="course-credits-${index}">Course ${index + 1} credits</label>
+            <input class="field-control course-credits" id="course-credits-${index}" type="number" min="0" max="30" step="0.5" inputmode="decimal" placeholder="3" value="${escapeAttribute(course.credits)}">
+          </div>
+          <div class="points-cell"><span class="points-pill">${points.toFixed(1)}</span></div>
+          <button class="remove-course" type="button" data-action="remove" aria-label="Remove ${escapeAttribute(course.name || `course ${index + 1}`)}" title="Remove course"><svg class="icon" aria-hidden="true"><use href="#icon-trash"></use></svg></button>
+        </div>`;
+    }).join('');
+
+    elements.emptyState.hidden = state.courses.length !== 0;
+    elements.countLabel.textContent = `${state.courses.length} ${state.courses.length === 1 ? 'course' : 'courses'}`;
+
+    if (focusIndex >= 0) {
+      const input = document.getElementById(`course-name-${focusIndex}`);
+      if (input) input.focus();
     }
+  }
 
-    window.removeCourse = function(id) {
-        const courseRow = document.getElementById(id);
-        if (courseRow) {
-            courseRow.remove();
-            courseCount--;
-            updateCalculateBtnState();
-            updateLiveGPA();
-            saveCoursesToStorage();
-        }
-    }
+  function calculateResults() {
+    const scale = getCurrentScale();
+    let totalCredits = 0;
+    let qualityPoints = 0;
+    const countedCourses = [];
 
-    function clearAllCourses() {
-        courseList.innerHTML = '';
-        courseCount = 0;
-        courses = [];
-        updateCalculateBtnState();
-        updateLiveGPA();
-        resultsSection.style.display = 'none';
-        localStorage.removeItem('gpaCourses');
-    }
-
-    function updateCalculateBtnState() {
-        const courses = document.querySelectorAll('.course-row');
-        calculateGpaBtn.disabled = courses.length === 0;
-    }
-
-    window.updateLiveGPA = function() {
-        const result = calculateGPA();
-        if (result.totalCredits > 0) {
-            liveGpaEl.textContent = result.gpa.toFixed(2);
-        } else {
-            liveGpaEl.textContent = '0.00';
-        }
-    }
-
-    function calculateGPA() {
-        const courses = document.querySelectorAll('.course-row');
-        const scale = gradingScales[currentScale];
-        let totalPoints = 0;
-        let totalCredits = 0;
-        let qualityPoints = 0;
-        const courseDetails = [];
-
-        courses.forEach((course, index) => {
-            const name = course.querySelector('.course-name').value || `Course ${index + 1}`;
-            const grade = course.querySelector('.grade').value;
-            const credits = parseFloat(course.querySelector('.credits').value) || 0;
-
-            if (credits > 0 && scale[grade] !== undefined) {
-                const points = scale[grade] * credits;
-                totalPoints += points;
-                totalCredits += credits;
-                qualityPoints += scale[grade] * credits;
-
-                courseDetails.push({
-                    name,
-                    grade,
-                    credits,
-                    points: scale[grade],
-                    qualityPoints: points
-                });
-            }
+    state.courses.forEach((course, index) => {
+      const credits = Number.parseFloat(course.credits);
+      const points = scale.points[course.grade];
+      if (Number.isFinite(credits) && credits > 0 && points !== undefined) {
+        const quality = credits * points;
+        totalCredits += credits;
+        qualityPoints += quality;
+        countedCourses.push({
+          index,
+          name: course.name || `Course ${index + 1}`,
+          grade: course.grade,
+          credits,
+          points,
+          quality
         });
+      }
+    });
 
-        const gpa = totalCredits > 0 ? (totalPoints / totalCredits) : 0;
+    return {
+      totalCredits,
+      qualityPoints,
+      countedCourses,
+      gpa: totalCredits > 0 ? qualityPoints / totalCredits : 0,
+      max: scale.max
+    };
+  }
 
-        return {
-            gpa,
-            totalCredits,
-            qualityPoints,
-            courseCount: courses.length,
-            courseDetails
-        };
+  function getStanding(gpa, totalCredits) {
+    if (!totalCredits) return { label: 'Add your grades', caption: 'Add credits to see your semester result.' };
+    if (gpa >= 3.7) return { label: 'Excellent standing', caption: 'You are setting a strong academic pace.' };
+    if (gpa >= 3) return { label: 'Strong track', caption: 'You are building a solid semester.' };
+    if (gpa >= 2) return { label: 'Keep building', caption: 'There is plenty of room to move up.' };
+    return { label: 'Room to grow', caption: 'Every next grade is a chance to improve.' };
+  }
+
+  function updateResult(announce = false) {
+    const result = calculateResults();
+    const percent = result.max > 0 ? Math.min(100, Math.max(0, (result.gpa / result.max) * 100)) : 0;
+    const standing = getStanding(result.gpa, result.totalCredits);
+
+    elements.gpaResult.textContent = result.gpa.toFixed(2);
+    elements.gpaMax.textContent = `/ ${result.max.toFixed(1)}`;
+    elements.ringValue.textContent = result.gpa.toFixed(2);
+    elements.gpaRing.style.setProperty('--ring-percent', percent.toFixed(2));
+    elements.progressValue.textContent = `${percent.toFixed(1)}%`;
+    elements.progressBar.style.width = `${percent}%`;
+    elements.totalCredits.textContent = formatNumber(result.totalCredits, 1);
+    elements.qualityPoints.textContent = formatNumber(result.qualityPoints, 1);
+    elements.calculatedCourses.textContent = result.countedCourses.length;
+    elements.resultStatus.textContent = standing.label;
+    elements.resultCaption.textContent = standing.caption;
+
+    if (state.courses.length !== result.countedCourses.length) {
+      elements.countLabel.textContent = `${state.courses.length} ${state.courses.length === 1 ? 'course' : 'courses'} · ${result.countedCourses.length} counted`;
+    } else {
+      elements.countLabel.textContent = `${state.courses.length} ${state.courses.length === 1 ? 'course' : 'courses'}`;
     }
 
-    function displayResults() {
-        const result = calculateGPA();
-        
-        gpaResultEl.textContent = result.gpa.toFixed(2);
-        totalCreditsEl.textContent = result.totalCredits;
-        qualityPointsEl.textContent = result.qualityPoints.toFixed(1);
-        courseCountEl.textContent = result.courseDetails.length;
-        
-        // Update breakdown list
-        breakdownList.innerHTML = '';
-        result.courseDetails.forEach((course, index) => {
-            const breakdownItem = document.createElement('div');
-            breakdownItem.className = 'breakdown-item';
-            breakdownItem.innerHTML = `
-                <div class="breakdown-header">
-                    <span class="breakdown-index">${index + 1}</span>
-                    <span class="breakdown-name">${course.name}</span>
-                    <span class="breakdown-grade">${course.grade} (${course.points.toFixed(1)})</span>
-                </div>
-                <div class="breakdown-details">
-                    <span>Credits: ${course.credits}</span>
-                    <span>Points: ${course.qualityPoints.toFixed(1)}</span>
-                </div>
-            `;
-            breakdownList.appendChild(breakdownItem);
-        });
-        
-        resultsSection.style.display = 'block';
-        resultsSection.scrollIntoView({ behavior: 'smooth' });
+    if (announce) {
+      elements.resultCard.classList.remove('result-pulse');
+      // Force a reflow so the pulse can be replayed for consecutive clicks.
+      void elements.resultCard.offsetWidth;
+      elements.resultCard.classList.add('result-pulse');
+      showToast(result.totalCredits ? `Your GPA is ${result.gpa.toFixed(2)}.` : 'Add credits to calculate your GPA.');
     }
+  }
 
-    async function generatePDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        const result = calculateGPA();
-        
-        // Add header
-        doc.setFillColor(67, 97, 238);
-        doc.rect(0, 0, 210, 40, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(24);
-        doc.text('GPA Calculator Report', 105, 20, { align: 'center' });
-        
-        // Add date
-        doc.setFontSize(10);
-        doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, 30, { align: 'center' });
-        
-        // Add summary section
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(18);
-        doc.text('GPA Summary', 20, 55);
-        
-        doc.setFontSize(12);
-        doc.text(`Overall GPA: ${result.gpa.toFixed(2)}`, 20, 65);
-        doc.text(`Total Credits: ${result.totalCredits}`, 20, 72);
-        doc.text(`Quality Points: ${result.qualityPoints.toFixed(1)}`, 20, 79);
-        doc.text(`Number of Courses: ${result.courseDetails.length}`, 20, 86);
-        
-        // Add course breakdown
-        doc.setFontSize(18);
-        doc.text('Course Breakdown', 20, 100);
-        
-        let yPos = 110;
-        doc.setFontSize(10);
-        
-        // Table headers
-        doc.setFillColor(240, 240, 240);
-        doc.rect(20, yPos - 5, 170, 8, 'F');
-        doc.text('Course Name', 25, yPos);
-        doc.text('Grade', 100, yPos);
-        doc.text('Credits', 130, yPos);
-        doc.text('Points', 160, yPos);
-        doc.text('Total', 180, yPos);
-        
-        yPos += 10;
-        
-        // Course rows
-        result.courseDetails.forEach((course, index) => {
-            if (yPos > 280) {
-                doc.addPage();
-                yPos = 20;
-            }
-            
-            doc.text(course.name, 25, yPos);
-            doc.text(course.grade, 100, yPos);
-            doc.text(course.credits.toString(), 130, yPos);
-            doc.text(course.points.toFixed(1), 160, yPos);
-            doc.text(course.qualityPoints.toFixed(1), 180, yPos);
-            
-            yPos += 7;
-        });
-        
-        // Add footer
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text('Generated by GPA Calculator - UsmanKhan.dev', 105, 290, { align: 'center' });
-        
-        // Save the PDF
-        doc.save(`GPA-Report-${new Date().toISOString().split('T')[0]}.pdf`);
-    }
+  function renderScaleTable() {
+    const scale = getCurrentScale();
+    elements.gradingTable.innerHTML = Object.entries(scale.points).map(([grade, points]) => `
+      <tr><td>${grade}</td><td>${points.toFixed(1)}</td><td>${gradeMeaning[grade]}</td></tr>
+    `).join('');
+  }
 
-    function saveCoursesToStorage() {
-        const courses = [];
-        document.querySelectorAll('.course-row').forEach(row => {
-            const name = row.querySelector('.course-name').value;
-            const grade = row.querySelector('.grade').value;
-            const credits = row.querySelector('.credits').value;
-            courses.push({ name, grade, credits });
-        });
-        localStorage.setItem('gpaCourses', JSON.stringify(courses));
-        localStorage.setItem('gpaScale', currentScale);
-    }
+  function updatePointCell(row, course) {
+    const points = getCurrentScale().points[course.grade];
+    const pill = row.querySelector('.points-pill');
+    if (pill) pill.textContent = points === undefined ? '—' : points.toFixed(1);
+    const removeButton = row.querySelector('[data-action="remove"]');
+    if (removeButton) removeButton.setAttribute('aria-label', `Remove ${course.name || 'course'}`);
+  }
 
-    function loadCoursesFromStorage() {
-        const savedCourses = localStorage.getItem('gpaCourses');
-        const savedScale = localStorage.getItem('gpaScale');
-        
-        if (savedScale) {
-            currentScale = savedScale;
-            gradingScaleSelect.value = savedScale;
-            populateGradingScale();
-        }
-        
-        if (savedCourses) {
-            const courses = JSON.parse(savedCourses);
-            courses.forEach(course => {
-                addCourse(course.name, course.grade, course.credits);
-            });
-        }
-    }
+  function addCourse() {
+    state.courses.push({ name: '', grade: 'A', credits: '3' });
+    renderCourses(state.courses.length - 1);
+    updateResult();
+    scheduleSave();
+  }
 
-    function setupEventListeners() {
-        addCourseBtn.addEventListener('click', () => addCourse());
-        calculateGpaBtn.addEventListener('click', displayResults);
-        clearAllBtn.addEventListener('click', clearAllCourses);
-        downloadPdfBtn.addEventListener('click', generatePDF);
-        
-        gradingScaleSelect.addEventListener('change', (e) => {
-            currentScale = e.target.value;
-            populateGradingScale();
-            updateLiveGPA();
-            saveCoursesToStorage();
-        });
-        
-        menuToggle.addEventListener('click', () => {
-            navLinks.classList.toggle('active');
-        });
-        
-        // Close menu when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!navLinks.contains(e.target) && !menuToggle.contains(e.target)) {
-                navLinks.classList.remove('active');
-            }
-        });
-        
-        // Auto-save on input
-        document.addEventListener('input', () => {
-            saveCoursesToStorage();
-        });
-    }
+  function removeCourse(index) {
+    if (!Number.isInteger(index) || !state.courses[index]) return;
+    const [removed] = state.courses.splice(index, 1);
+    renderCourses();
+    updateResult();
+    scheduleSave();
+    showToast(`${removed.name || 'Course'} removed.`);
+  }
 
-    // Make functions available globally
-    window.addCourse = addCourse;
-    window.removeCourse = removeCourse;
-    window.updateLiveGPA = updateLiveGPA;
+  function clearAllCourses() {
+    if (state.courses.length === 0) return;
+    state.courses = [];
+    renderCourses();
+    updateResult();
+    scheduleSave();
+    showToast('Course list cleared.');
+  }
 
-    // Initialize the app
-    loadCoursesFromStorage();
+  function handleCourseField(event) {
+    const row = event.target.closest('.course-row');
+    if (!row) return;
+    const index = Number(row.dataset.index);
+    const course = state.courses[index];
+    if (!course) return;
+
+    if (event.target.classList.contains('course-name')) course.name = event.target.value;
+    if (event.target.classList.contains('course-grade')) course.grade = event.target.value;
+    if (event.target.classList.contains('course-credits')) course.credits = event.target.value;
+
+    updatePointCell(row, course);
+    updateResult();
+    scheduleSave();
+  }
+
+  function csvCell(value) {
+    return `"${String(value).replace(/"/g, '""')}"`;
+  }
+
+  function exportReport() {
+    const result = calculateResults();
+    const rows = [
+      ['GPAwise report', state.term],
+      ['Grading scale', state.scale === 'weighted' ? 'Weighted 5.0' : 'Standard 4.0'],
+      [],
+      ['Course', 'Grade', 'Credits', 'Grade points', 'Quality points'],
+      ...result.countedCourses.map((course) => [course.name, course.grade, course.credits, course.points.toFixed(1), course.quality.toFixed(1)]),
+      [],
+      ['Semester GPA', result.gpa.toFixed(2)],
+      ['Total credits', formatNumber(result.totalCredits, 1)],
+      ['Quality points', formatNumber(result.qualityPoints, 1)]
+    ];
+    const csv = `\uFEFF${rows.map((row) => row.map(csvCell).join(',')).join('\n')}`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `gpawise-${state.term.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-report.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showToast('Your GPA report is ready to download.');
+  }
+
+  function showToast(message) {
+    clearTimeout(toastTimer);
+    elements.toast.textContent = message;
+    elements.toast.classList.add('visible');
+    toastTimer = setTimeout(() => elements.toast.classList.remove('visible'), 2800);
+  }
+
+  function applyTheme(theme) {
+    const isDark = theme === 'dark';
+    elements.html.dataset.theme = isDark ? 'dark' : 'light';
+    elements.themeIcon.setAttribute('href', isDark ? '#icon-sun' : '#icon-moon');
+    elements.themeLabel.textContent = isDark ? 'Light' : 'Dark';
+    elements.themeToggle.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+    elements.themeToggle.title = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+  }
+
+  function initTheme() {
+    let theme = localStorage.getItem(THEME_KEY);
+    if (!theme) theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    applyTheme(theme);
+  }
+
+  function toggleMenu(forceClose = false) {
+    const shouldOpen = forceClose ? false : !elements.primaryNav.classList.contains('open');
+    elements.primaryNav.classList.toggle('open', shouldOpen);
+    elements.menuToggle.classList.toggle('is-open', shouldOpen);
+    elements.menuToggle.setAttribute('aria-expanded', String(shouldOpen));
+    elements.menuToggle.setAttribute('aria-label', shouldOpen ? 'Close navigation' : 'Open navigation');
+  }
+
+  function bindEvents() {
+    elements.addCourse.addEventListener('click', addCourse);
+    elements.emptyAddCourse.addEventListener('click', addCourse);
+    elements.clearAll.addEventListener('click', clearAllCourses);
+    elements.calculate.addEventListener('click', () => updateResult(true));
+    elements.download.addEventListener('click', exportReport);
+    elements.courseList.addEventListener('input', handleCourseField);
+    elements.courseList.addEventListener('change', handleCourseField);
+    elements.courseList.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-action="remove"]');
+      if (button) removeCourse(Number(button.closest('.course-row').dataset.index));
+    });
+
+    elements.gradingScale.addEventListener('change', (event) => {
+      state.scale = scales[event.target.value] ? event.target.value : 'standard';
+      renderCourses();
+      renderScaleTable();
+      updateResult();
+      scheduleSave();
+      showToast(`${state.scale === 'weighted' ? 'Weighted 5.0' : 'Standard 4.0'} scale selected.`);
+    });
+
+    elements.term.addEventListener('change', (event) => {
+      state.term = event.target.value;
+      scheduleSave();
+    });
+
+    elements.themeToggle.addEventListener('click', () => {
+      const nextTheme = elements.html.dataset.theme === 'dark' ? 'light' : 'dark';
+      applyTheme(nextTheme);
+      try {
+        localStorage.setItem(THEME_KEY, nextTheme);
+      } catch (_error) {
+        // The theme still applies for the current visit if storage is unavailable.
+      }
+    });
+
+    elements.menuToggle.addEventListener('click', () => toggleMenu());
+    document.querySelectorAll('.primary-nav a').forEach((link) => link.addEventListener('click', () => toggleMenu(true)));
+    document.addEventListener('click', (event) => {
+      if (elements.primaryNav.classList.contains('open') && !elements.primaryNav.contains(event.target) && !elements.menuToggle.contains(event.target)) toggleMenu(true);
+    });
+  }
+
+  function init() {
+    loadState();
+    initTheme();
+    renderCourses();
+    renderScaleTable();
+    updateResult();
+    bindEvents();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
     init();
-});
+  }
+})();
